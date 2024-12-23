@@ -8,7 +8,9 @@ ZsWorld API 文档。
 ## Wiki目录
 * @subpage ZsWorld_Build
 * @subpage ZsWorld_Design
+* @subpage ZsWorld_Module
 * @subpage ZsWorld_Example
 * @subpage ZsWorld_FAQ
 * @subpage ZsWorld_CodeFormat
 * @subpage ZsWorld_Log
+* @subpage ZsWorld_Credits

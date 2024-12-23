@@ -1,9 +1,17 @@
-# USD与场景管理接口
+# 功能模块 {#ZsWorld_Module}
+
+# USD、几何与场景结构设计
+- **credits** ：[ **王鑫磊** ](https://github.com/littlemine)
+## 设计思路
+## 具体说明
+
+# 场景状态异步更新与可视化同步
+- **credits** ：[ **王鑫磊** ](https://github.com/littlemine)
 ## 设计思路
 ## 具体说明
 
 # 描边
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 使用JFA(Jump Flood Algorithm)做描边，该算法的优点是通用，对mesh没有特殊要求，只要能渲染都可以做描边，而且开销良好。
 ## 具体流程
@@ -23,7 +31,7 @@
 4. 外扩像素数量只有是2的次方时才是精确的n - 1，例如7会被算法分解为3 + 1，实际上只会外扩4个像素，而8则被分解为4 + 2 + 1，外扩7像素。
 
 # 视锥剔除
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 在CPU端测试待渲染物体的AABB是否与相机视锥相交，若存在相交则允许渲染
 ## 具体流程
@@ -39,7 +47,7 @@
 2. 这里进一步优化了文章里面的思路，对于每一个视锥体面，仅取距离它最近的AABB顶点进行测试，而不是最远和最近点，计算量缩减一半
 
 # Reversed-Z
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **开发者** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 float值距离0越近则精度越密集，越远则越稀疏。
 在实际渲染中距离相机稍微有一定距离的片元，深度就已经超过0.9，场景中的大部分深度落在[0.9, 1.0]这个区间内，很容易因此出现z-fighting的现象。
@@ -54,7 +62,7 @@ float值距离0越近则精度越密集，越远则越稀疏。
    2. https://zhuanlan.zhihu.com/p/341495234
 
 # 遮挡剔除
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[**邓瑞韬**](https://github.com/scudrt)
 ## 算法思路
 使用Vulkan的occlusion query做遮挡查询，对每一个mesh的AABB进行光栅化，根据query结果确定该物体是否完全被遮挡。
 ## 具体流程
@@ -71,7 +79,7 @@ float值距离0越近则精度越密集，越远则越稀疏。
 4. 可以考虑用compute shader去优化
 
 # 透明渲染
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 使用weighted OIT方法进行透明混合，该方法通过改变透明混合公式，解放了透明混合的顺序依赖，从而可以通过两次render pass实现OIT，而且不需要任何排序行为。
 ## 具体流程
@@ -83,7 +91,7 @@ float值距离0越近则精度越密集，越远则越稀疏。
 3. 其他OIT方法有深度剥离、双向深度剥离、per-pixel linked lists等，是无损但是开销相对较高的方法
 
 # 灯光管理
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 为了实现高性能实时多光源，这里采用Clustered Forward Shading，也就是Forward+方式来做灯光渲染。
 Forward+的核心就是它将视锥体划分为了多个cluster，每一个片元都有其所属的cluster，于是对于每一个片元，可以仅计算影响了所属cluster的光源，大大减少了光照计算量。
@@ -96,7 +104,7 @@ Forward+的核心就是它将视锥体划分为了多个cluster，每一个片�
 2. ??
 
 # 着色模型
-- **开发者**：[**邓瑞韬**](https://github.com/scudrt)
+- **credits** ：[ **邓瑞韬** ](https://github.com/scudrt)
 ## 算法思路
 使用经典的Cook Torrance模型
 ## 具体流程

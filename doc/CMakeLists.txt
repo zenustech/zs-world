@@ -12,10 +12,12 @@ set(DOXY_FILES
   doc/doc.md
   doc/build.md
   doc/design.md
+  doc/module.md
   doc/example.md
   doc/faq.md
   doc/codingstyle.md
   doc/changes.md
+  doc/credits.md
   )
 
 # list(APPEND DOXY_FILES

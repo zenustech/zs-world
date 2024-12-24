@@ -139,6 +139,19 @@ add_subdirectory(zs/world/render)
 
 # zs_world
 add_library(zs_world SHARED)
+set_target_properties(zs_world
+	PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+
+	RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+	ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+
+	SKIP_BUILD_RPATH OFF
+	BUILD_WITH_INSTALL_RPATH TRUE
+	INSTALL_RPATH "\$ORIGIN"
+	INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 target_include_directories(zs_world PUBLIC zs)
 target_sources(zs_world PRIVATE
 	zs/world/World.cpp

@@ -152,6 +152,7 @@ target_sources(zs_world PRIVATE
 
 	# scene
 	zs/world/scene/SceneContext.cpp
+	zs/world/scene/Camera.cpp
 
 	zs/world/scene/Primitive.cpp
 	zs/world/scene/PrimitiveQuery.cpp

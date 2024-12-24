@@ -47,6 +47,9 @@ endif()
 
 add_subdirectory(deps/utf8)
 
+add_library(tinygltf INTERFACE)
+target_include_directories(tinygltf INTERFACE deps/tinygltf)
+
 add_subdirectory(deps/cppcoro)
 set_target_properties(cppcoro
   PROPERTIES POSITION_INDEPENDENT_CODE ON
@@ -185,7 +188,8 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
 else()
   target_compile_features(zs_world PUBLIC cxx_std_20)
 endif()
-target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim zpc::shader_runtime utf8cpp cppcoro)
+target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim zpc::shader_runtime 
+	tinygltf utf8cpp cppcoro)
 target_link_libraries(zs_world PRIVATE zpc_jit_py)
 if (WIN32)
 	target_link_libraries(zs_world PRIVATE synchronization)	# for Event.cpp
@@ -195,6 +199,49 @@ target_compile_definitions(zs_world PRIVATE -DZs_World_EXPORT)
 ########################
 ## additional modules ##
 ########################
+
+# plugin
+#######################################################################
+## inherent plugins (only require consistent interface/ header file) ##
+#######################################################################
+function(zs_add_plugin name)
+  cmake_parse_arguments(PARSE_ARGV 1 ARG
+    ";" "" ""
+    )
+
+  add_library(${name} SHARED ${ARG_UNPARSED_ARGUMENTS})
+
+  set_target_properties(${name} 
+  	PROPERTIES 
+	LINKER_LANGUAGE CXX
+	POSITION_INDEPENDENT_CODE ON
+	#
+	# ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
+	RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
+	ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins
+	#
+	# ref: https://stackoverflow.com/questions/58360502/how-to-set-rpath-origin-in-cmake
+	# ref: https://stackoverflow.com/questions/57915564/cmake-how-to-set-rpath-to-origin-with-cmake
+	SKIP_BUILD_RPATH OFF
+	BUILD_WITH_INSTALL_RPATH TRUE
+	INSTALL_RPATH "\$ORIGIN"
+	INSTALL_RPATH_USE_LINK_PATH TRUE
+  )
+  target_link_libraries(${name} PRIVATE
+	zensim
+	zs_interface
+  )
+
+  add_dependencies(zs_world ${name})
+endfunction()
+
+#
+zs_add_plugin(examplePlugin zs/plugins/ExamplePlugin.cpp)
+target_link_libraries(examplePlugin PUBLIC zswhereami)
+zs_add_plugin(exceptionPlugin zs/plugins/ExceptionNode.cpp)
+zs_add_plugin(longRuntimePlugin zs/plugins/LongRuntimeNode.cpp)
+zs_add_plugin(longOutputPlugin zs/plugins/LongOutputNode.cpp)
 
 # usd
 if(ZS_ENABLE_USD)

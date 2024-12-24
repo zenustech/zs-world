@@ -14,3 +14,6 @@
 	path = deps/zpc_jit
 	url = https://github.com/zenustech/POC_zpc_jit.git
 	shallow = true
+[submodule "deps/tinygltf"]
+	path = deps/tinygltf
+	url = https://github.com/syoyo/tinygltf.git

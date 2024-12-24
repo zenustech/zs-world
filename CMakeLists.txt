@@ -62,7 +62,7 @@ include_directories(${Boost_INCLUDE_DIR})
 ###########
 ## world ##
 ###########
-# 'zs_world_boost' mainly for 
+# 'zs_world_boost' mainly for the plugin system
 add_library(zs_world_boost STATIC)
 target_sources(zs_world_boost PRIVATE
 	# nodes
@@ -78,6 +78,63 @@ set_target_properties(zs_world_boost
 	POSITION_INDEPENDENT_CODE ON
 )
 
+# slang for render
+option(ZS_SLANG_BUILD_FROM_SOURCE "OFF will use prebuilt binary from github. ON will add slang as subdirectory" ON)
+
+set(SLANG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/slang)
+set(SLANG_ENABLE_EXTERNAL_COMPILER_WARNINGS OFF BOOL CACHE INTERNAL "Disable slang warnings")
+set(SLANG_SLANG_LLVM_FLAVOR DISABLE)
+set(SLANG_ENABLE_GFX OFF)
+if (ZS_SLANG_BUILD_FROM_SOURCE)
+	add_subdirectory(${SLANG_SOURCE_DIR} EXCLUDE_FROM_ALL)
+else ()
+	include(ExternalProject)
+	set(SLANG_SOURCE_URL "https://github.com/shader-slang/slang/archive/refs/tags/v2024.14.tar.gz")
+	if(WIN32)
+		set(SLANG_URL "https://github.com/shader-slang/slang/releases/download/v2024.14/slang-2024.14-windows-x86_64.tar.gz")
+	elseif(APPLE)
+		set(SLANG_URL "https://github.com/shader-slang/slang/releases/download/v2024.14/slang-2024.14-macos-x86_64.tar.gz")
+	elseif(UNIX)
+		set(SLANG_URL "https://github.com/shader-slang/slang/releases/download/v2024.14/slang-2024.14-linux-x86_64.tar.gz")
+	else()
+		message(FATAL_ERROR "Unsupported platform. Only Windows, MacOS, and Linux are supported. Please turn ON ZS_SLANG_BUILD_FROM_SOURCE flag.")
+	endif()
+
+	# slang prebuilt dir
+	set(SLANG_PREBUILT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals/slang/prebuilt" CACHE INTERNAL "Prebuilt slang binary path")
+
+	file(MAKE_DIRECTORY "${SLANG_PREBUILT_DIR}")
+	if (NOT EXISTS "${SLANG_PREBUILT_DIR}/bin")
+		set(SLANG_TARBALL "${SLANG_PREBUILT_DIR}/slang.tar.gz")
+		message(STATUS "Downloading Slang from ${SLANG_URL}")
+		file(DOWNLOAD ${SLANG_URL} ${SLANG_TARBALL} SHOW_PROGRESS)
+		execute_process(
+				COMMAND tar -xzf "${SLANG_TARBALL}" -C "${SLANG_PREBUILT_DIR}"
+				RESULT_VARIABLE TAR_RESULT)
+	endif ()
+	set(SLANG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals/slang/source")
+	file(MAKE_DIRECTORY "${SLANG_SOURCE_DIR}")
+	if (NOT EXISTS "${SLANG_SOURCE_DIR}/slang-2024.14")
+		set(SLANG_SOURCE_TARBALL "${SLANG_SOURCE_DIR}/slang-src.tar.gz")
+		message(STATUS "Downloading Slang source from ${SLANG_SOURCE_URL}")
+		file(DOWNLOAD ${SLANG_SOURCE_URL} ${SLANG_SOURCE_TARBALL} SHOW_PROGRESS)
+		execute_process(
+				COMMAND tar -xzf "${SLANG_SOURCE_TARBALL}" -C "${SLANG_SOURCE_DIR}"
+				RESULT_VARIABLE TAR_RESULT)
+	endif ()
+	set(SLANG_SOURCE_DIR "${SLANG_SOURCE_DIR}/slang-2024.14")
+	link_directories(BEFORE "${SLANG_PREBUILT_DIR}/bin" "${SLANG_PREBUILT_DIR}/lib")
+
+	set(SLANG_PREBUILT_PATH "${SLANG_PREBUILT_DIR}" CACHE PATH "Path to the Slang prebuilt binaries.")
+	set(SLANG_PREBUILT_INCLUDE_DIR "${SLANG_PREBUILT_DIR}/include" CACHE PATH "Path to the Slang prebuilt headers.")
+	execute_process(
+			COMMAND ${CMAKE_COMMAND} -E copy_directory "${SLANG_PREBUILT_DIR}/bin" "${CMAKE_BINARY_DIR}"
+	)
+endif ()
+
+add_subdirectory(zs/world/render)
+
+# zs_world
 add_library(zs_world SHARED)
 target_include_directories(zs_world PUBLIC zs)
 target_sources(zs_world PRIVATE
@@ -127,7 +184,7 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
 else()
   target_compile_features(zs_world PUBLIC cxx_std_20)
 endif()
-target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim utf8cpp cppcoro)
+target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim zpc::shader_runtime utf8cpp cppcoro)
 target_link_libraries(zs_world PRIVATE zpc_jit_py)
 if (WIN32)
 	target_link_libraries(zs_world PRIVATE synchronization)	# for Event.cpp

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_VISIBILITY_INLINES_HIDDEN YES)
 
@@ -88,6 +88,7 @@ set(SLANG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/slang)
 set(SLANG_ENABLE_EXTERNAL_COMPILER_WARNINGS OFF BOOL CACHE INTERNAL "Disable slang warnings")
 set(SLANG_SLANG_LLVM_FLAVOR DISABLE)
 set(SLANG_ENABLE_GFX OFF)
+set(SLANG_ENABLE_SLANGRT OFF)
 if (ZS_SLANG_BUILD_FROM_SOURCE)
 	add_subdirectory(${SLANG_SOURCE_DIR} EXCLUDE_FROM_ALL)
 else ()
@@ -214,9 +215,6 @@ target_compile_definitions(zs_world PRIVATE -DZs_World_EXPORT)
 ########################
 
 # plugin
-#######################################################################
-## inherent plugins (only require consistent interface/ header file) ##
-#######################################################################
 function(zs_add_plugin name)
   cmake_parse_arguments(PARSE_ARGV 1 ARG
     ";" "" ""
@@ -297,6 +295,63 @@ if(ZS_ENABLE_USD)
 		zpc_jit_py TBB::tbb
 		${PXR_LIBRARIES}
 	)
+
+	message(STATUS "iterating pxr libs: ${PXR_LIBRARIES}")
+	foreach(usdlib IN LISTS PXR_LIBRARIES)
+		add_custom_command(
+			TARGET zs_world
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${usdlib}> $<TARGET_FILE_DIR:zs_world>/$<TARGET_FILE_BASE_NAME:${usdlib}>$<TARGET_FILE_SUFFIX:${usdlib}>
+			COMMAND ${CMAKE_COMMAND} -E copy_directory ${ZS_USD_ROOT}/lib/usd $<TARGET_FILE_DIR:zs_world>/usd
+			VERBATIM
+			COMMENT "copying linked USD shared library [$<TARGET_FILE:${usdlib}>]"
+		)
+		get_target_property(usd_dep_libs ${usdlib} INTERFACE_LINK_LIBRARIES)
+		message(STATUS "\titerating pxr-dependent libs of (${usdlib}): ${usd_dep_libs}")
+		foreach(lib ${usd_dep_libs})
+			if (TARGET ${lib})
+				message(STATUS "\t\titerating target-type dependent lib: ${lib}")
+				get_target_property(lib_type ${lib} TYPE)
+				if (lib_type STREQUAL "SHARED_LIBRARY")
+					add_custom_command(
+						TARGET zs_world
+						POST_BUILD
+						COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zs_world>/$<TARGET_FILE_BASE_NAME:${lib}>$<TARGET_FILE_SUFFIX:${lib}>
+						VERBATIM
+						COMMENT "copying USD-dependent runtime shared libraries (target) [$<TARGET_FILE:${lib}>]"
+    					)
+				endif(lib_type STREQUAL "SHARED_LIBRARY")
+			elseif(EXISTS ${lib})	# file
+				message(STATUS "\t\titerating file-type dependent lib: ${lib}")
+				cmake_path(GET lib EXTENSION suffix)
+				cmake_path(GET lib STEM basename)
+				set(FILE_IS_SHARED 0)
+				if (WIN32)
+					if(suffix MATCHES ".*\.dll$")
+						set(FILE_IS_SHARED 1)
+					endif()
+				elseif(APPLE)
+					if (suffix MATCHES ".*\.dylib$")
+						set(FILE_IS_SHARED 1)
+					endif()
+				else(UNIX)	# 
+					if(suffix MATCHES "^\.so.*$")
+						set(FILE_IS_SHARED 1)
+					endif()
+				endif()
+				if (FILE_IS_SHARED)
+					add_custom_command(
+						TARGET zs_world
+						POST_BUILD
+						COMMAND ${CMAKE_COMMAND} -E copy ${lib} $<TARGET_FILE_DIR:zs_world>/${basename}${suffix}
+						VERBATIM
+						COMMENT "copying USD-dependent runtime shared libraries (file) [${lib}]"
+    					)
+				endif()
+			endif(TARGET ${lib})
+		endforeach(lib)
+		message(STATUS "iterating pxr lib: ${usdlib}")
+	endforeach()
 endif()
 
 # jit

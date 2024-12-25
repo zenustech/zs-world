@@ -14,12 +14,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "world/WorldExport.hpp"
+
 #if defined(_WIN32)
 #  undef far
 #  undef near
 #endif
 
-class Camera {
+class ZS_WORLD_EXPORT Camera {
   float fov, aspect;
   float znear, zfar;
 

@@ -51,9 +51,6 @@ add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE deps/tinygltf)
 
 add_subdirectory(deps/cppcoro)
-set_target_properties(cppcoro
-  PROPERTIES POSITION_INDEPENDENT_CODE ON
-)
 
 add_definitions(-DBOOST_SYSTEM_USE_UTF8)
 if (WIN32)
@@ -327,9 +324,18 @@ if(ZS_ENABLE_USD)
 				cmake_path(GET lib STEM basename)
 				set(FILE_IS_SHARED 0)
 				if (WIN32)
-					if(suffix MATCHES ".*\.dll$")
-						set(FILE_IS_SHARED 1)
-					endif()
+				#[=[
+					add_custom_command(
+						TARGET zs_world
+						POST_BUILD
+						COMMAND ${CMAKE_COMMAND} 
+							-DOBJECTS=$<TARGET_RUNTIME_DLLS:zs_world> 
+							-DOUTPUT=$<TARGET_FILE_DIR:zs_world>
+							-P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/copy_files.cmake
+						VERBATIM
+						COMMENT "copying USD-dependent runtime shared libraries (lib-corresponding dll file) [$<TARGET_RUNTIME_DLLS:zs_world>]"
+    				)
+				#]=]
 				elseif(APPLE)
 					if (suffix MATCHES ".*\.dylib$")
 						set(FILE_IS_SHARED 1)
@@ -346,7 +352,7 @@ if(ZS_ENABLE_USD)
 						COMMAND ${CMAKE_COMMAND} -E copy ${lib} $<TARGET_FILE_DIR:zs_world>/${basename}${suffix}
 						VERBATIM
 						COMMENT "copying USD-dependent runtime shared libraries (file) [${lib}]"
-    					)
+    				)
 				endif()
 			endif(TARGET ${lib})
 		endforeach(lib)
@@ -439,15 +445,8 @@ if (ZS_ENABLE_JIT)
 			add_custom_command(
         			TARGET zpcjit_postprocess
         			POST_BUILD
-        			COMMAND ${CMAKE_COMMAND}
-        			-DOBJECTS=${PYTHON_ENV_PATH}/Lib
-        			-DOUTPUT=${ZPC_BIN_DIR}
-				-P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/copy_dir.cmake
-
-        			COMMAND ${CMAKE_COMMAND}
-        			-DOBJECTS=${PYTHON_ENV_PATH}/DLLs
-        			-DOUTPUT=${ZPC_BIN_DIR}
-        			-P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/copy_dir.cmake
+        			COMMAND ${CMAKE_COMMAND} -E copy_directory ${PYTHON_ENV_PATH}/Lib ${ZPC_BIN_DIR}/lib
+        			COMMAND ${CMAKE_COMMAND} -E copy_directory ${PYTHON_ENV_PATH}/DLLs ${ZPC_BIN_DIR}/DLLs
 
         			COMMENT "copying python lib directories at ${PYTHON_ENV_PATH} to ${ZPC_BIN_DIR}"
       			)

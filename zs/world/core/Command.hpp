@@ -1,20 +1,13 @@
 #pragma once
 #include <list>
-#include "interface/InterfaceExport.hpp"
+
+#include "interface/world/CommandInterface.hpp"
+#include "world/WorldExport.hpp"
 #include "zensim/ZpcResource.hpp"
 
 namespace zs {
 
-  struct ZS_INTERFACE_EXPORT CommandConcept {
-    virtual ~CommandConcept() = default;
-
-    virtual void execute() = 0;
-    virtual void undo() = 0;
-    virtual CommandConcept *clone() const = 0;
-    virtual void deinit() { ::delete this; }
-  };
-
-  struct ZS_INTERFACE_EXPORT CommandManager {
+  struct ZS_WORLD_EXPORT CommandManager {
     using Container = std::list<UniquePtr<CommandConcept>>;
 
     CommandManager() noexcept;

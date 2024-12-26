@@ -23,8 +23,9 @@ namespace zs {
     // e.g. "/tmp, C:/tmp"
     _rootCachePath = std::filesystem::temp_directory_path().string();
 
-    _scripts[g_textEditorLabel] = Archive{g_textEditorFile};
-    _scripts[g_textEditorLabel].loadFromFileAscii(g_textEditorFile);
+    auto fn = zs::abs_exe_directory() + "/resource/scripts/" + g_textEditorFile;
+    _scripts[g_textEditorLabel] = Archive{fn};
+    _scripts[g_textEditorLabel].loadFromFileAscii(fn);
 
     _sceneContexts[g_defaultSceneLabel] = SceneContext();
 

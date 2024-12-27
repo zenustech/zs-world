@@ -434,6 +434,14 @@ if (ZS_ENABLE_JIT)
 			COMMENT "Copying zpcjit src file: ${ZPCJIT_FILE}")
 	endforeach()
 
+	# prepare zpc headers for pyzpc
+	add_custom_command(
+		TARGET zpcjit_postprocess POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory 
+			${CMAKE_CURRENT_SOURCE_DIR}/deps/interface/zpc/include/zensim 
+			${PY_LIBS_DIR}/zpcjit/zpc_jit/zpc/include/zensim
+		COMMENT "Copying zpc source files: ${CMAKE_CURRENT_SOURCE_DIR}/zpc/include/zensim")
+
 	#
 	# copy python environment
 	#

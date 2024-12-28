@@ -51,6 +51,9 @@ add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE deps/tinygltf)
 
 add_subdirectory(deps/cppcoro)
+set_target_properties(cppcoro
+	PROPERTIES POSITION_INDEPENDENT_CODE ON
+)
 
 add_definitions(-DBOOST_SYSTEM_USE_UTF8)
 if (WIN32)

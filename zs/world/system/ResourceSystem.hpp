@@ -117,7 +117,7 @@ namespace zs {
 
     /// widgets
     EmptyWidget _emptyWidget;
-    std::map<std::string, Shared<WidgetComponentConcept>, std::less<>> _widgets{};
+    std::map<std::string, Shared<WidgetConcept>, std::less<>> _widgets{};
 
     /// contexts
     PrimIDGenerator<> _primIdGenerator;
@@ -393,32 +393,32 @@ namespace zs {
     }
 
     /// ui widgets
-    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetComponentConcept, WidgetT>> = 0>
+    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetConcept, WidgetT>> = 0>
     static bool register_widget(std::string_view label, WidgetT &&w) {
       return instance()
           ._widgets.emplace(std::string(label), zs::make_shared<remove_cvref_t<WidgetT>>(FWD(w)))
           .second;
     }
-    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetComponentConcept, WidgetT>> = 0>
+    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetConcept, WidgetT>> = 0>
     static bool register_widget(std::string_view label, WidgetT *w) {
       return instance()._widgets.emplace(std::string(label), Shared<WidgetT>(w)).second;
     }
-    static bool register_widget(std::string_view label, Shared<WidgetComponentConcept> w) {
+    static bool register_widget(std::string_view label, Shared<WidgetConcept> w) {
       return instance()._widgets.emplace(std::string(label), w).second;
     }
-    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetComponentConcept, WidgetT>> = 0>
+    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetConcept, WidgetT>> = 0>
     static void set_widget(std::string_view label, WidgetT &&w) {
       instance()._widgets[std::string(label)] = zs::make_shared<remove_cvref_t<WidgetT>>(FWD(w));
     }
-    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetComponentConcept, WidgetT>> = 0>
+    template <typename WidgetT, enable_if_t<is_base_of_v<WidgetConcept, WidgetT>> = 0>
     static void set_widget(std::string_view label, WidgetT *w) {
       instance()._widgets[std::string(label)] = Shared<WidgetT>(w);
     }
-    static void set_widget(std::string_view label, Shared<WidgetComponentConcept> w) {
+    static void set_widget(std::string_view label, Shared<WidgetConcept> w) {
       instance()._widgets[std::string(label)] = w;
     }
 
-    template <typename WidgetT = WidgetComponentConcept>
+    template <typename WidgetT = WidgetConcept>
     static WidgetT *get_widget_ptr(std::string_view label) {
       if (auto it = instance()._widgets.find(label); it == instance()._widgets.end())
         return dynamic_cast<WidgetT *>(&instance()._emptyWidget);
@@ -426,7 +426,7 @@ namespace zs {
         // return std::dynamic_pointer_cast<WidgetT>(instance()._widgets.at(label));
         return dynamic_cast<WidgetT *>((*it).second.get());
     }
-    template <typename WidgetT = WidgetComponentConcept>
+    template <typename WidgetT = WidgetConcept>
     static Shared<WidgetT> ref_widget(const std::string &label) {
       return std::dynamic_pointer_cast<WidgetT>(instance()._widgets.at(label));
     }

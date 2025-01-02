@@ -21,11 +21,19 @@ namespace zs {
         _coroHandle = {};
       }
     }
+    StateMachine(StateMachine&& o) noexcept : _coroHandle{zs::exchange(o._coroHandle, nullptr)} {}
+    StateMachine& operator=(StateMachine&& o) noexcept {
+      if (this == zs::addressof(o)) return *this;
+      StateMachine tmp(zs::move(o));
+      zs_swap(_coroHandle, tmp._coroHandle);
+      return *this;
+    }
     StateMachine(const StateMachine&) = delete;
     StateMachine& operator=(const StateMachine&) = delete;
 
-  protected:
     StateMachine(CoroHandle handle = nullptr) noexcept : _coroHandle{handle} {}
+
+  protected:
     CoroHandle _coroHandle;
   };
 

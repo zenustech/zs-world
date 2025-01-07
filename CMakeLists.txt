@@ -55,7 +55,6 @@ if (WIN32)
 	add_definitions(-D_WIN32_WINNT=0x0601 -DWIN32_LEAN_AND_MEAN)
 endif(WIN32)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
-include_directories(${Boost_INCLUDE_DIR})
 
 ###########
 ## world ##
@@ -67,6 +66,7 @@ target_sources(zs_world_boost PRIVATE
 	zs/world/node/NodeManager.cpp
 )
 target_link_libraries(zs_world_boost PRIVATE zs_interface Boost::system Boost::filesystem zensim)
+target_include_directories(zs_world_boost PUBLIC ${Boost_INCLUDE_DIR})
 target_compile_definitions(zs_world_boost PRIVATE -DZs_World_EXPORT)
 # https://stackoverflow.com/questions/75121130/mac-os-boost-installed-using-macports-collision-with-c-version
 target_compile_definitions(zs_world_boost PUBLIC -DBOOST_ASIO_HAS_STD_INVOKE_RESULT)

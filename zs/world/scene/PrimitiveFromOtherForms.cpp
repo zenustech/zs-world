@@ -37,6 +37,14 @@
 #  include "pxr/usd/usdSkel/skeletonQuery.h"
 #  include "pxr/usd/usdSkel/skinningQuery.h"
 #  include "pxr/usd/usdSkel/utils.h"
+// lighting
+#  include <pxr/usd/usdLux/cylinderLight.h>
+#  include <pxr/usd/usdLux/diskLight.h>
+#  include <pxr/usd/usdLux/distantLight.h>
+#  include <pxr/usd/usdLux/domeLight.h>
+#  include <pxr/usd/usdLux/geometryLight.h>
+#  include <pxr/usd/usdLux/rectLight.h>
+#  include <pxr/usd/usdLux/sphereLight.h>
 #endif
 #include "zensim/geometry/Mesh.hpp"
 #include "zensim/types/Property.h"
@@ -547,6 +555,68 @@ namespace zs {
     return true;
   }
 
+  bool parse_usdprim_light(const std::string& lightType, const ScenePrimConcept* scenePrim, ZsPrimitive* zsPrim, double time) {
+    // TODO: lightType
+    if (scenePrim == nullptr) return false;
+    Shared<LightPrimContainer> lightPrim = zsPrim->localLightPrims();
+    if (!lightPrim) return false;
+
+    try {
+      lightPrim->lightType() = lightType;
+
+      auto usdPrim = std::any_cast<pxr::UsdPrim>(scenePrim->getRawPrim());
+      auto light = pxr::UsdLuxLightAPI(usdPrim);
+
+      // light position in world space
+      glm::mat4 worldMat = zsPrim->visualTransform(time);
+      lightPrim->lightPosition() = worldMat[3]; // ??
+
+      // light intensity
+      float intensity;
+      if (light.GetIntensityAttr().Get(&intensity)) {
+        lightPrim->intensity() = intensity;
+      }
+
+      glm::vec3 color;
+      pxr::UsdAttribute attr;
+      pxr::VtValue attrValue;
+
+      // light color
+      attr = light.GetColorAttr();
+      pxr::GfVec3f _col;
+      attr.Get(&_col);
+      lightPrim->lightColor() = { _col[0], _col[1], _col[2] };
+      // TODO: temperature color
+      /*
+      bool enableTemperature = false;
+      light.GetEnableColorTemperatureAttr().Get<bool>(&enableTemperature);
+      lightPrim->useTemperatureColor = enableTemperature;
+      if (enableTemperature) {
+        float temp;
+        attr = light.GetColorTemperatureAttr();
+        attr.Get(&temp);
+        // TODO: calculate color from temperature
+      }
+      */
+
+      // TODO: light texture
+      /*
+      auto texAttr = usdPrim.GetAttribute(pxr::TfToken("inputs:texture:file"));
+      std::string texturePath = "";
+      if (texAttr.HasValue()) {
+        pxr::SdfAssetPath texPath;
+        texAttr.Get(&texPath);
+        texturePath = texPath.GetResolvedPath();
+      }
+      */
+
+    } catch (const std::exception& e) {
+      fmt::print("parse_usdprim_light: {}\n", e.what());
+      return false;
+    }
+    return true;
+  }
+
   void assign_usdmesh_to_primitive(const ScenePrimConcept* scenePrim, ZsPrimitive& geom,
                                    double time, const source_location& loc) {
     if (!scenePrim) return;
@@ -772,6 +842,12 @@ namespace zs {
 
     /// geometry
     assign_usdmesh_to_primitive(prim, *ret, time, loc);
+
+    // lighting
+    const std::string& typeName = prim->getTypeName();
+    if (typeName.size() >= 5 && typeName.substr(typeName.size() - 5, 5) == "Light") {
+      parse_usdprim_light(typeName, prim, ret, time);
+    }
 
     /// children
     size_t nChilds;

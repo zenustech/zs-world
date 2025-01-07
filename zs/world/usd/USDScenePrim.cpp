@@ -488,6 +488,13 @@ namespace zs {
     return prim.GetPath().GetString().c_str();
   }
 
+  const char* USDScenePrim::getTypeName() const {
+    if (!isValid()) return "";
+
+    auto prim = std::any_cast<pxr::UsdPrim>(mPrim);
+    return prim.GetTypeName().GetString().c_str();
+  }
+
   bool USDScenePrim::getVisible(double time) const {
     if (!isValid()) return false;
 

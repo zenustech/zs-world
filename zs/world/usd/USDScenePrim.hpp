@@ -49,6 +49,7 @@ namespace zs {
 
     virtual const char* getName() const override;
     virtual const char* getPath() const override;
+    virtual const char* getTypeName() const override;
     virtual bool getVisible(double time = -1.0) const override;
     virtual bool setVisible(bool visible, double time = -1.0) override;
     virtual glm::mat4 getWorldTransform(double time = -1.0) const override;

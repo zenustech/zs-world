@@ -508,7 +508,25 @@ namespace zs {
       return true;
     }
 
-    ;
+    auto& lightType() noexcept { return _lightType; }
+    const auto& lightType() const noexcept { return _lightType; }
+
+    auto& intensity() noexcept { return _intensity; }
+    const auto intensity() const noexcept { return _intensity; }
+
+    auto& lightColor() noexcept { return _lightColor; }
+    const auto& lightColor() const noexcept { return _lightColor; }
+
+    auto& lightPosition() noexcept { return _lightPosition; }
+    const auto& lightPosition() const noexcept { return _lightPosition; }
+
+    ; // TODO: light texture
+    ; // TODO: light geometry / area lighting
+
+    glm::vec3 _lightColor;
+    glm::vec3 _lightPosition; // world space position
+    std::string _lightType;
+    float _intensity;
   };
 
   template <> constexpr prim_type_e get_prim_container_type_index<LightPrimContainer>() noexcept {

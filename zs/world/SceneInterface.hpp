@@ -85,6 +85,7 @@ namespace zs {
 
     virtual const char* getName() const { return ""; }
     virtual const char* getPath() const { return ""; }
+    virtual const char* getTypeName() const { return ""; }
     virtual ScenePrimHolder getParent() const { return ScenePrimHolder(); }
     virtual ScenePrimHolder getChild(const char* childName) const { return ScenePrimHolder(); }
     virtual ScenePrimHolder addChild(const char* childName) { return ScenePrimHolder(); }

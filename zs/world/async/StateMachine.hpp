@@ -13,7 +13,7 @@ namespace zs {
     struct promise_type;
     using CoroHandle = std::coroutine_handle<promise_type>;
 
-    template <typename E> void onEvent(E&& e);
+    template <typename E> bool onEvent(E&& e);
 
     ~StateMachine() {
       if (_coroHandle) {
@@ -74,12 +74,14 @@ namespace zs {
     bool (*isWantedEvent)(const std::type_info&) = nullptr;
   };
 
-  template <typename E> void StateMachine::onEvent(E&& e) {
+  template <typename E> bool StateMachine::onEvent(E&& e) {
     auto& p = _coroHandle.promise();
     if (p.isWantedEvent(typeid(E))) {
       p.currentEvent = zs::forward<E>(e);
       _coroHandle.resume();
-    };
+      return true;
+    }
+    return false;
   }
 
 }  // namespace zs

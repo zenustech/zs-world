@@ -50,11 +50,6 @@ add_subdirectory(deps/utf8)
 add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE deps/tinygltf)
 
-add_subdirectory(deps/cppcoro)
-set_target_properties(cppcoro
-	PROPERTIES POSITION_INDEPENDENT_CODE ON
-)
-
 add_definitions(-DBOOST_SYSTEM_USE_UTF8)
 if (WIN32)
 	add_definitions(-D_WIN32_WINNT=0x0601 -DWIN32_LEAN_AND_MEAN)
@@ -203,7 +198,7 @@ else()
   target_compile_features(zs_world PUBLIC cxx_std_20)
 endif()
 target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim zpc::shader_runtime 
-	tinygltf utf8cpp cppcoro)
+	tinygltf utf8cpp)
 target_link_libraries(zs_world PRIVATE zpc_jit_py)
 if (WIN32)
 	target_link_libraries(zs_world PRIVATE synchronization)	# for Event.cpp

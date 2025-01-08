@@ -5,7 +5,7 @@
 #ifdef ZS_ENABLE_USD
 #include "usd/USDScenePrim.hpp"
 #else
-#include "scene/SceneInterface.hpp"
+#include "SceneInterface.hpp"
 #endif
 
 namespace zs {

@@ -555,7 +555,7 @@ namespace zs {
     return true;
   }
 
-  bool parse_usdprim_light(const std::string& lightType, const ScenePrimConcept* scenePrim, ZsPrimitive* zsPrim, double time) {
+  bool parse_usdprim_light(const std::string& lightType, const ScenePrimConcept* scenePrim, ZsPrimitive* zsPrim) {
     // TODO: lightType
     if (scenePrim == nullptr) return false;
     Shared<LightPrimContainer> lightPrim = zsPrim->localLightPrims();
@@ -568,7 +568,7 @@ namespace zs {
       auto light = pxr::UsdLuxLightAPI(usdPrim);
 
       // light position in world space
-      glm::mat4 worldMat = zsPrim->visualTransform(time);
+      glm::mat4 worldMat = zsPrim->visualTransform();
       lightPrim->lightPosition() = worldMat[3]; // ??
 
       // light intensity
@@ -846,7 +846,7 @@ namespace zs {
     // lighting
     const std::string& typeName = prim->getTypeName();
     if (typeName.size() >= 5 && typeName.substr(typeName.size() - 5, 5) == "Light") {
-      parse_usdprim_light(typeName, prim, ret, time);
+      parse_usdprim_light(typeName, prim, ret);
     }
 
     /// children
@@ -1284,6 +1284,12 @@ namespace zs {
                                          // let's mark it true as default
     // check stage up axis
     detail.isYUpAxis() = prim->getScene()->getIsYUpAxis();
+
+    // lighting
+    const std::string& typeName = prim->getTypeName();
+    if (typeName.size() >= 5 && typeName.substr(typeName.size() - 5, 5) == "Light") {
+      parse_usdprim_light(typeName, prim, ret);
+    }
 
     /// children
     size_t nChilds;

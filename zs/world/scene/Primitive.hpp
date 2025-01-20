@@ -503,30 +503,60 @@ namespace zs {
   template <> constexpr prim_type_e get_prim_container_type_index<CameraPrimContainer>() noexcept {
     return prim_type_e::Camera_;
   }
+
+  enum class LightSourceType {
+    DISTANT = 0,
+    POINT,
+    SPHERE, // not supported yet
+    RECT,
+    DOME,
+    CYLINDER,
+    DISK,
+    NONE
+  };
   struct ZS_WORLD_EXPORT LightPrimContainer : PrimContainerInterface<LightPrimContainer> {
     bool isLight() const override {
       return true;
     }
 
-    auto& lightType() noexcept { return _lightType; }
-    const auto& lightType() const noexcept { return _lightType; }
+    auto& lightType() noexcept { return _lightSourceType; }
+    const auto& lightType() const noexcept { return _lightSourceType; }
 
     auto& intensity() noexcept { return _intensity; }
     const auto intensity() const noexcept { return _intensity; }
 
+    // light color without temperature
     auto& lightColor() noexcept { return _lightColor; }
+    // light color without temperature
     const auto& lightColor() const noexcept { return _lightColor; }
 
-    auto& lightPosition() noexcept { return _lightPosition; }
-    const auto& lightPosition() const noexcept { return _lightPosition; }
+    auto& lightVector() noexcept { return _lightVector; }
+    const auto& lightVector() const noexcept { return _lightVector; }
+
+    auto& colorTemperature() noexcept { return _colorTemperature; }
+    const auto& colorTemperature() const noexcept { return _colorTemperature; }
+
+    auto& enableColorTemperature() noexcept { return _enableColorTemperature; }
+    const auto& enableColorTemperature() const noexcept { return _enableColorTemperature; }
+
+    auto& exposure() noexcept { return _exposure; }
+    const auto& exposure() const noexcept { return _exposure; }
 
     ; // TODO: light texture
     ; // TODO: light geometry / area lighting
 
-    glm::vec3 _lightColor;
-    glm::vec3 _lightPosition; // world space position
-    std::string _lightType;
+    glm::vec3 _lightColor; // temperature is not considered
+    /*
+    * pamater for all kinds of light source
+    * POINT and SPHERE: world space position of center
+    * DISTANT: only x channel saves the angle of light
+    */
+    glm::vec4 _lightVector;
     float _intensity;
+    float _colorTemperature;
+    float _exposure;
+    LightSourceType _lightSourceType;
+    bool _enableColorTemperature;
   };
 
   template <> constexpr prim_type_e get_prim_container_type_index<LightPrimContainer>() noexcept {

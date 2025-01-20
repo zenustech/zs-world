@@ -555,63 +555,85 @@ namespace zs {
     return true;
   }
 
-  bool parse_usdprim_light(const std::string& lightType, const ScenePrimConcept* scenePrim, ZsPrimitive* zsPrim) {
+  bool parse_usdprim_light(const std::string& lightType, const ScenePrimConcept* scenePrim, ZsPrimitive* zsPrim, double time) {
     // TODO: lightType
     if (scenePrim == nullptr) return false;
     Shared<LightPrimContainer> lightPrim = zsPrim->localLightPrims();
     if (!lightPrim) return false;
 
-    try {
-      lightPrim->lightType() = lightType;
+    glm::vec3 color;
+    pxr::UsdAttribute attr;
+    pxr::VtValue attrValue;
 
-      auto usdPrim = std::any_cast<pxr::UsdPrim>(scenePrim->getRawPrim());
-      auto light = pxr::UsdLuxLightAPI(usdPrim);
+    /*
+    * Common properties of light
+    */
+    auto usdPrim = std::any_cast<pxr::UsdPrim>(scenePrim->getRawPrim());
+    auto light = pxr::UsdLuxLightAPI(usdPrim);
 
-      // light position in world space
-      glm::mat4 worldMat = zsPrim->visualTransform();
-      lightPrim->lightPosition() = worldMat[3]; // ??
+    // light intensity
+    float intensity;
+    if (light.GetIntensityAttr().Get(&intensity, time)) {
+      lightPrim->intensity() = intensity;
+    }
 
-      // light intensity
-      float intensity;
-      if (light.GetIntensityAttr().Get(&intensity)) {
-        lightPrim->intensity() = intensity;
-      }
+    // light color
+    attr = light.GetColorAttr();
+    pxr::GfVec3f _col;
+    attr.Get(&_col);
+    lightPrim->lightColor() = { _col[0], _col[1], _col[2] };
 
-      glm::vec3 color;
-      pxr::UsdAttribute attr;
-      pxr::VtValue attrValue;
+    // light transform in world space
+    glm::mat4 worldMat = zsPrim->visualTransform(time);
 
-      // light color
-      attr = light.GetColorAttr();
-      pxr::GfVec3f _col;
-      attr.Get(&_col);
-      lightPrim->lightColor() = { _col[0], _col[1], _col[2] };
-      // TODO: temperature color
-      /*
-      bool enableTemperature = false;
-      light.GetEnableColorTemperatureAttr().Get<bool>(&enableTemperature);
-      lightPrim->useTemperatureColor = enableTemperature;
-      if (enableTemperature) {
-        float temp;
-        attr = light.GetColorTemperatureAttr();
-        attr.Get(&temp);
-        // TODO: calculate color from temperature
-      }
-      */
+    light.GetEnableColorTemperatureAttr().Get<bool>(&lightPrim->enableColorTemperature(), time);
+    if (lightPrim->enableColorTemperature()) {
+      attr = light.GetColorTemperatureAttr();
+      attr.Get<float>(&lightPrim->colorTemperature(), time);
+    }
 
-      // TODO: light texture
-      /*
-      auto texAttr = usdPrim.GetAttribute(pxr::TfToken("inputs:texture:file"));
-      std::string texturePath = "";
-      if (texAttr.HasValue()) {
-        pxr::SdfAssetPath texPath;
-        texAttr.Get(&texPath);
-        texturePath = texPath.GetResolvedPath();
-      }
-      */
+    attr = light.GetExposureAttr();
+    attr.Get<float>(&lightPrim->exposure(), time);
 
-    } catch (const std::exception& e) {
-      fmt::print("parse_usdprim_light: {}\n", e.what());
+    /*
+    * Specific properties of each type of light
+    */
+    if (lightType == "DistantLight") {
+      lightPrim->lightType() = LightSourceType::DISTANT;
+
+      float angle;
+      // angle property
+      auto distant = pxr::UsdLuxDistantLight(light);
+      attr = distant.GetAngleAttr();
+      attr.Get(&angle, time);
+
+      // world space direction
+      glm::vec3 worldDir = glm::normalize(worldMat * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f));
+      lightPrim->lightVector() = glm::vec4(worldDir, angle);
+    } else if (lightType == "SphereLight") {
+      // treat sphere light as point light for now
+      lightPrim->lightType() = LightSourceType::POINT;
+      lightPrim->lightVector() = worldMat[3];
+
+      // the minimum contribution to fragment color should be 0.5 / 256.0, so the light range is sqrt(intensity * 512.0)
+      float lightRadius = sqrt(intensity * 512.0f);
+      lightPrim->lightVector().w = lightRadius;
+    } else if (lightType == "DomeLight") {
+      lightPrim->lightType() = LightSourceType::DOME;
+      ; // TODO
+    } else if (lightType == "RectLight") {
+      lightPrim->lightType() = LightSourceType::RECT;
+      ; // TODO
+    } else if (lightType == "CylinderLight") {
+      lightPrim->lightType() = LightSourceType::CYLINDER;
+      ; // TODO
+    } else if (lightType == "DiskLight") {
+      lightPrim->lightType() = LightSourceType::DISK;
+      ; // TODO
+    } else {
+      // light source type not 
+      lightPrim->lightType() = LightSourceType::NONE;
+      lightPrim->lightVector() = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
       return false;
     }
     return true;
@@ -846,7 +868,7 @@ namespace zs {
     // lighting
     const std::string& typeName = prim->getTypeName();
     if (typeName.size() >= 5 && typeName.substr(typeName.size() - 5, 5) == "Light") {
-      parse_usdprim_light(typeName, prim, ret);
+      parse_usdprim_light(typeName, prim, ret, time);
     }
 
     /// children
@@ -1286,9 +1308,11 @@ namespace zs {
     detail.isYUpAxis() = prim->getScene()->getIsYUpAxis();
 
     // lighting
+    TimeCode st, ed;
+    ret->queryStartEndTimeCodes(st, ed);
     const std::string& typeName = prim->getTypeName();
     if (typeName.size() >= 5 && typeName.substr(typeName.size() - 5, 5) == "Light") {
-      parse_usdprim_light(typeName, prim, ret);
+      parse_usdprim_light(typeName, prim, ret, st);
     }
 
     /// children

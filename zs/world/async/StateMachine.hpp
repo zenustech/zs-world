@@ -33,6 +33,8 @@ namespace zs {
 
     StateMachine(CoroHandle handle = nullptr) noexcept : _coroHandle{handle} {}
 
+    bool hasValue() const noexcept { return _coroHandle != nullptr; }
+
   protected:
     CoroHandle _coroHandle;
   };

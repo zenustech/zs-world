@@ -21,11 +21,16 @@ namespace zs {
                                                      const source_location& loc
                                                      = source_location::current());
 
-  /// @brief split points upon divergent [verts] attributes
+  /// @brief split points upon divergent [verts] attributes or [verts] point indices
   /// @brief only preserve [nrm, tan, clr, uv] point attributes
-  /// @note usually calls assign_attribs_from_prim_to_vert(src, {{"nrm", 3}, {"clr", 3}, {"tan",
   ZS_WORLD_EXPORT void assign_simple_mesh_to_zsmesh(
       const PrimitiveStorage& src, ZsTriMesh* pTriMesh = nullptr, ZsLineMesh* pLineMesh = nullptr,
+      ZsPointMesh* pPointMesh = nullptr, const source_location& loc = source_location::current());
+
+  /// @brief average zs mesh point attributes to simple mesh's points
+  /// @brief only preserve [nrm, tan, clr, uv] point attributes
+  ZS_WORLD_EXPORT void write_zs_mesh_points_to_simple_mesh_verts(
+      PrimitiveStorage& geom, ZsTriMesh* pTriMesh = nullptr, ZsLineMesh* pLineMesh = nullptr,
       ZsPointMesh* pPointMesh = nullptr, const source_location& loc = source_location::current());
 
   /// @brief assign prim attributes to vert attributes

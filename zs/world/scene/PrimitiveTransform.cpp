@@ -385,8 +385,10 @@ namespace zs {
     /// @note skinning pos (if exist) should precede pos tag
     auto posLabel
         = points.hasProperty(ATTRIB_SKINNING_POS_TAG) ? ATTRIB_SKINNING_POS_TAG : ATTRIB_POS_TAG;
+
     auto setupZsMeshPoints = [&](auto &mesh) {
       mesh.nodes.resize(prevPointOffsets.back());
+      mesh.vids.resize(mesh.nodes.size());
       if (hasVertUv || hasPointUv)
         mesh.uvs.resize(mesh.nodes.size());
       else
@@ -421,6 +423,7 @@ namespace zs {
               {
                 auto v = pointView.pack(dim_c<3>, posLabel, pid);
                 mesh.nodes[dstVid] = {v[0], v[1], v[2]};
+                mesh.vids[dstVid] = vid;
               }
 
               if (hasVertUv) {
@@ -487,19 +490,17 @@ namespace zs {
 
             for (int d = 0; d < dime; ++d) {
               PrimIndex vid, pid;
-              if constexpr (is_integral_v<RM_CVREF_T(originalVids)>) {
+              if constexpr (is_integral_v<RM_CVREF_T(originalVids)>)
                 vid = originalVids;
-                pid = vertView(POINT_ID_TAG, vid, prim_id_c);
-              } else {
+              else
                 vid = originalVids[d];
-                pid = vertView(POINT_ID_TAG, vid, prim_id_c);
-              }
+              pid = vertView(POINT_ID_TAG, vid, prim_id_c);
               const auto offset = prevPointOffsets[pid];
               const auto &ids = vertIdsPerPoint[pid];
               PrimIndex j = 0;
               for (; j < ids.size(); ++j)
-                /// @note find the candidate that is the same vert,
-                ///  or a vert pointing to the same point (pid)
+                /// @note find the candidate that is the exact same vert,
+                ///  or another vert pointing to the same point (pid)
                 if (ids[j] == vid || vertView(POINT_ID_TAG, ids[j], prim_id_c) == pid) break;
               assert(j != ids.size());
 
@@ -512,6 +513,78 @@ namespace zs {
     if (pPointMesh) remapPrimIndices(pointPrims, pPointMesh->elems, wrapv<1>{});
     if (pLineMesh) remapPrimIndices(linePrims, pLineMesh->elems, wrapv<2>{});
     if (pTriMesh) remapPrimIndices(triPrims, pTriMesh->elems, wrapv<3>{});
+  }
+
+  void write_zs_mesh_points_to_simple_mesh_verts(PrimitiveStorage &geom, ZsTriMesh *pTriMesh,
+                                                 ZsLineMesh *pLineMesh, ZsPointMesh *pPointMesh,
+                                                 const source_location &loc) {
+#if ZS_ENABLE_OPENMP
+    auto pol = omp_exec();
+    constexpr auto space = execspace_e::openmp;
+#else
+    auto pol = seq_exec();
+    constexpr auto space = execspace_e::host;
+#endif
+
+//
+#if 0
+    static std::vector<const char *> attribNames{ATTRIB_UV_TAG, ATTRIB_NORMAL_TAG, ATTRIB_COLOR_TAG,
+                                                 ATTRIB_TANGENT_TAG, ATTRIB_TEXTURE_ID_TAG};
+    static std::vector<int> attribDims{2, 3, 3, 3, 2};
+#endif
+
+    std::map<std::string, int> propsToWrite;
+    auto gatherProps = [&](auto &zsmesh) {
+      if (zsmesh.nodes.size() && zsmesh.vids.size() == zsmesh.nodes.size()) {
+        if (zsmesh.uvs.size() == zsmesh.nodes.size()) propsToWrite[ATTRIB_UV_TAG] = 2;
+        if (zsmesh.norms.size() == zsmesh.nodes.size()) propsToWrite[ATTRIB_NORMAL_TAG] = 3;
+        if (zsmesh.colors.size() == zsmesh.nodes.size()) propsToWrite[ATTRIB_COLOR_TAG] = 3;
+        if (zsmesh.tans.size() == zsmesh.nodes.size()) propsToWrite[ATTRIB_TANGENT_TAG] = 3;
+        if (zsmesh.texids.size() == zsmesh.nodes.size()) propsToWrite[ATTRIB_TEXTURE_ID_TAG] = 2;
+      }
+    };
+    if (pTriMesh) gatherProps(*pTriMesh);
+    if (pLineMesh) gatherProps(*pLineMesh);
+    if (pPointMesh) gatherProps(*pPointMesh);
+
+    auto &verts = geom.verts();
+
+    std::vector<PropertyTag> vtTags;
+    for (const auto &[name, dim] : propsToWrite) vtTags.push_back(PropertyTag{name, dim});
+    verts.appendProperties32(pol, vtTags);
+
+    /// accumulate
+    auto iterateMesh = [&](auto &zsmesh) {
+      if (zsmesh.nodes.size() && zsmesh.vids.size() == zsmesh.nodes.size()) {
+        pol(
+            range(zsmesh.nodes.size()),
+            [&, verts = view<space>({}, verts.attr32())](PrimIndex pid) mutable {
+              auto vid = zsmesh.vids[pid];
+
+              if (zsmesh.uvs.size() == zsmesh.nodes.size()) {
+                for (int d = 0; d < 2; ++d) verts(ATTRIB_UV_TAG, d, vid) = zsmesh.uvs[pid][d];
+              }
+              if (zsmesh.norms.size() == zsmesh.nodes.size()) {
+                for (int d = 0; d < 3; ++d) verts(ATTRIB_NORMAL_TAG, d, vid) = zsmesh.norms[pid][d];
+              }
+              if (zsmesh.colors.size() == zsmesh.nodes.size()) {
+                for (int d = 0; d < 3; ++d) verts(ATTRIB_COLOR_TAG, d, vid) = zsmesh.colors[pid][d];
+              }
+              if (zsmesh.tans.size() == zsmesh.nodes.size()) {
+                for (int d = 0; d < 3; ++d) verts(ATTRIB_TANGENT_TAG, d, vid) = zsmesh.tans[pid][d];
+              }
+              /// @note be cautious about the possible divergence
+              if (zsmesh.texids.size() == zsmesh.nodes.size()) {
+                for (int d = 0; d < 2; ++d)
+                  verts(ATTRIB_TEXTURE_ID_TAG, d, vid, prim_id_c) = zsmesh.texids[pid][d];
+              }
+            },
+            loc);
+      }
+    };
+    if (pTriMesh) iterateMesh(*pTriMesh);
+    if (pLineMesh) iterateMesh(*pLineMesh);
+    if (pPointMesh) iterateMesh(*pPointMesh);
   }
 
   void assign_attribs_from_prim_to_vert(PrimitiveStorage &geom,

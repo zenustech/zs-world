@@ -466,12 +466,6 @@ namespace zs {
     co_return ret;
   }
   zs::Future<void> ZsPrimitive::zsMeshAsync(TimeCode tc) {
-#if 0
-    auto visMesh = co_await visualMeshAsync(tc);
-    ZsTriMesh triMesh;
-    assign_visual_mesh_to_trimesh(*visMesh, triMesh);
-    co_return triMesh;
-#else
     updatePrimFromKeyFrames(tc);
     if (keyframes().hasSkelAnim()) applySkinning(tc);
 
@@ -479,18 +473,13 @@ namespace zs {
     assign_simple_mesh_to_zsmesh(*this, &details().triMesh(), &details().lineMesh(),
                                  &details().pointMesh());
     co_return;
-#endif
   }
 
   zs::Future<void> ZsPrimitive::vkTriMeshAsync(VulkanContext &ctx, TimeCode tc) {
     zs_resources().inc_inflight_prim_cnt();
-#if 1
+
     co_await schedule_on(ZS_TASK_SCHEDULER(), zsMeshAsync(tc));
     auto &triMesh = details().triMesh();
-#else
-    auto triMesh = co_await schedule_on(ZS_TASK_SCHEDULER(), triMeshAsync(tc));
-#endif
-    // auto triMesh = co_await triMeshAsync(tc);
 
     /// @brief acceleration structure maintenance (including total box)
     if (details().isShapeDirty()) {
@@ -524,103 +513,44 @@ namespace zs {
           = PrimitiveBoundingBox{glm::vec3{rootBv._min[0], rootBv._min[1], rootBv._min[2]},
                                  glm::vec3{rootBv._max[0], rootBv._max[1], rootBv._max[2]}};
     }
-#if 0
-    /// @brief now that VkModel initialization does not involve queue any longer, safe to do it
-    /// here.
-    auto ret = VkModel(ctx, triMesh, zs_transform());
-    /// @note sync in main thread
-    co_await ZS_EVENT_SCHEDULER().schedule();
-    co_return ret;
-#else
-    /// @note this guarantees only one worker thread is accessing vulkan transfer
-    /// queue
-    // if (ctx.getLastQueue(vk_queue_e::dedicated_transfer) ==
-    // ctx.getQueue(vk_queue_e::graphics, 0)) {
-    if constexpr (true) {
-      /*this guarantees no simultaneous use of the same queue, since the last
-         transfer queue that is used to model update may be the same default
-         graphics queue*/
-      VkModel &ret = details().vkTriMesh();
-#  if 1
-      // for batch processing later
-      zs_execution().refVkCmdTaskQueue().enqueue(
-          [&ret, &ctx, &triMesh, tc, this](vk::CommandBuffer cmd) {
-            // std::cout << "vkTriMeshAsync (same queue) thread id: " <<
-            // std::this_thread::get_id()
-            //           << std::endl;
-            if (details().isTopoDirty()) {
-              ret.parseFromMesh(ctx, cmd, triMesh);
 
-              /// processed at the end of each iteration
-              details().clearTopoDirtyFlag();
-              details().clearAttribDirtyFlag();
-            } else if (details().isAttribDirty()) {
-              ret.updateAttribsFromMesh(cmd, triMesh, details().isDirty(details().dirty_Pos),
-                                        details().isDirty(details().dirty_Color),
-                                        details().isDirty(details().dirty_UV),
-                                        details().isDirty(details().dirty_Normal),
-                                        details().isDirty(details().dirty_Tangent));
-              if (details().isDirty(details().dirty_TextureId)) {
-                ret.updatePointTextureId(cmd, reinterpret_cast<const int *>(triMesh.texids.data()),
-                                         triMesh.texids.size() * 2 * sizeof(int));
-              }
+    VkModel &ret = details().vkTriMesh();
+    // for batch processing later
+    zs_execution().refVkCmdTaskQueue().enqueue([&ret, &ctx, &triMesh, tc,
+                                                this](vk::CommandBuffer cmd) {
+      if (details().isTopoDirty()) {
+        ret.parseFromMesh(ctx, cmd, triMesh);
 
-              /// processed at the end of each iteration
-              details().clearAttribDirtyFlag();
-            }
-
-            // only update timecode after all other prim states are done updated
-            if (details().isTimeCodeDirty()) {
-              details().setCurrentTimeCode(tc);
-              details().unsetTimeCodeDirty();
-            }
-
-            details().refProcessingFlag() = 0;  // done processing
-          });
-      zs_resources().dec_inflight_prim_cnt();  // trigger resource batch processing
-#  else
-      ZS_EVENT_SCHEDULER().emplace([&ret, &ctx, &triMesh, this]() {
-        // std::cout << "vkTriMeshAsync (same queue) thread id: " <<
-        // std::this_thread::get_id()
-        //           << std::endl;
-        if (details().isTopoDirty()) {
-          ret.parseFromMesh(ctx, triMesh);
-
-          details().clearTopoDirtyFlag();
-          details().clearAttribDirtyFlag();
-        } else if (details().isAttribDirty()) {
-          ret.updateAttribsFromMesh(triMesh, details().isDirty(details().dirty_Pos),
-                                    details().isDirty(details().dirty_Color),
-                                    details().isDirty(details().dirty_UV),
-                                    details().isDirty(details().dirty_Normal),
-                                    details().isDirty(details().dirty_Tangent));
-
-          details().clearAttribDirtyFlag();
+        /// processed at the end of each iteration
+        details().clearTopoDirtyFlag();
+        details().clearAttribDirtyFlag();
+      } else if (details().isAttribDirty()) {
+        ret.updateAttribsFromMesh(
+            cmd, triMesh, details().isDirty(details().dirty_Pos),
+            details().isDirty(details().dirty_Color), details().isDirty(details().dirty_UV),
+            details().isDirty(details().dirty_Normal), details().isDirty(details().dirty_Tangent));
+        if (details().isDirty(details().dirty_TextureId)) {
+          ret.updatePointTextureId(cmd, reinterpret_cast<const int *>(triMesh.texids.data()),
+                                   triMesh.texids.size() * 2 * sizeof(int));
         }
-        zs_resources().dec_inflight_prim_cnt();
-      });
-#  endif
-      co_await ZS_EVENT_SCHEDULER().schedule();
-      co_return;
-    } else {
-#  if 1
-      co_await ZS_DEDICATED_SCHEDULER().schedule();
-      // std::cout << "vkTriMeshAsync (divergent queue) thread id: " <<
-      // std::this_thread::get_id()
-      //           << std::endl;
-      details().vkTriMesh().parseFromMesh(ctx, triMesh);
-#  else
-      auto ret = co_await schedule_on(ZS_DEDICATED_SCHEDULER(),
-                                      [](auto &ctx, auto &triMesh, auto self) -> Future<VkModel> {
-                                        co_return VkModel(ctx, triMesh, self->zs_transform());
-                                      }(ctx, triMesh, this));
-#  endif
-      /// @note sync in main thread
-      co_await ZS_EVENT_SCHEDULER().schedule();
-      co_return;
-      // co_return &details().vkTriMesh();
-    }
-#endif
+
+        /// processed at the end of each iteration
+        details().clearAttribDirtyFlag();
+      }
+
+      // only update timecode after all other prim states are done updated
+      if (details().isTimeCodeDirty()) {
+        details().setCurrentTimeCode(tc);
+        details().unsetTimeCodeDirty();
+      }
+
+      details().refProcessingFlag() = 0;  // done processing
+    });
+    /// @brief eventually triggers the above resources' batch-processing
+    zs_resources().dec_inflight_prim_cnt();
+
+    co_await ZS_EVENT_SCHEDULER().schedule();
+    co_return;
   }
 
   ZsPrimitive *ZsPrimitive::queryVisualMesh(TimeCode tc) {

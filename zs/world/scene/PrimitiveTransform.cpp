@@ -526,13 +526,6 @@ namespace zs {
     constexpr auto space = execspace_e::host;
 #endif
 
-//
-#if 0
-    static std::vector<const char *> attribNames{ATTRIB_UV_TAG, ATTRIB_NORMAL_TAG, ATTRIB_COLOR_TAG,
-                                                 ATTRIB_TANGENT_TAG, ATTRIB_TEXTURE_ID_TAG};
-    static std::vector<int> attribDims{2, 3, 3, 3, 2};
-#endif
-
     std::map<std::string, int> propsToWrite;
     auto gatherProps = [&](auto &zsmesh) {
       if (zsmesh.nodes.size() && zsmesh.vids.size() == zsmesh.nodes.size()) {
@@ -561,23 +554,22 @@ namespace zs {
             [&, verts = view<space>({}, verts.attr32())](PrimIndex pid) mutable {
               auto vid = zsmesh.vids[pid];
 
-              if (zsmesh.uvs.size() == zsmesh.nodes.size()) {
+              if (zsmesh.uvs.size() == zsmesh.nodes.size())
                 for (int d = 0; d < 2; ++d) verts(ATTRIB_UV_TAG, d, vid) = zsmesh.uvs[pid][d];
-              }
-              if (zsmesh.norms.size() == zsmesh.nodes.size()) {
+
+              if (zsmesh.norms.size() == zsmesh.nodes.size())
                 for (int d = 0; d < 3; ++d) verts(ATTRIB_NORMAL_TAG, d, vid) = zsmesh.norms[pid][d];
-              }
-              if (zsmesh.colors.size() == zsmesh.nodes.size()) {
+
+              if (zsmesh.colors.size() == zsmesh.nodes.size())
                 for (int d = 0; d < 3; ++d) verts(ATTRIB_COLOR_TAG, d, vid) = zsmesh.colors[pid][d];
-              }
-              if (zsmesh.tans.size() == zsmesh.nodes.size()) {
+
+              if (zsmesh.tans.size() == zsmesh.nodes.size())
                 for (int d = 0; d < 3; ++d) verts(ATTRIB_TANGENT_TAG, d, vid) = zsmesh.tans[pid][d];
-              }
+
               /// @note be cautious about the possible divergence
-              if (zsmesh.texids.size() == zsmesh.nodes.size()) {
+              if (zsmesh.texids.size() == zsmesh.nodes.size())
                 for (int d = 0; d < 2; ++d)
                   verts(ATTRIB_TEXTURE_ID_TAG, d, vid, prim_id_c) = zsmesh.texids[pid][d];
-              }
             },
             loc);
       }

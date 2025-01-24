@@ -171,6 +171,9 @@ target_sources(zs_world PRIVATE
 	zs/world/scene/PrimitiveToOtherForms.cpp
 	zs/world/scene/PrimitiveFromOtherForms.cpp
 	zs/world/scene/PrimitiveTransform.cpp
+
+	zs/world/scene/PrimitiveOperation.cpp
+
 	zs/world/scene/PrimitiveRenderer.cpp
 	zs/world/scene/PrimitiveSerializer.cpp
 	

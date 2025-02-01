@@ -730,6 +730,7 @@ namespace zs {
       dirty_TextureId = 1 << 6,
       //
       mask_Attrib = (dirty_TextureId << 1) - 1,
+      mask_AttribNoneShape = mask_Attrib ^ mask_Shape,
 
       dirty_Translation = 1 << 10,
       dirty_Rotation = 1 << 11,
@@ -1052,6 +1053,8 @@ namespace zs {
     // Future<VkModel> vkLineMeshAsync(VulkanContext& ctx);
     // Future<VkModel> vkPointMeshAsync(VulkanContext& ctx);
 
+    Future<void> vkTriMeshAttribAsync(VulkanContext& ctx);
+
     auto& path() noexcept { return _path; }
     const auto& path() const noexcept { return _path; }
 
@@ -1071,7 +1074,7 @@ namespace zs {
       return details().toNativeCoordTransform() * worldTransform(tc);
     }
     void updateTransform(TimeCode tc) noexcept {
-      if (details().refProcessingFlag() == 0)
+      if (isStatusIdle())
         _visualTransform = visualTransform(tc);
       else
         _visualTransform = visualTransform(details().getCurrentTimeCode());
@@ -1088,6 +1091,11 @@ namespace zs {
       return ret;
     }
     auto zs_transform() const noexcept { return glm_to_zs_transform(worldTransform()); }
+
+    void markStatusProcessing() noexcept { details().refProcessingFlag() = 1; }
+    bool isStatusProcessing() const noexcept { return details().refProcessingFlag(); }
+    void markStatusIdle() noexcept { details().refProcessingFlag() = 0; }
+    bool isStatusIdle() const noexcept { return details().refProcessingFlag() == 0; }
 
   protected:
     std::string _path{""};  // accumulated path

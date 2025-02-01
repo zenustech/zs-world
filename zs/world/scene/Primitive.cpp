@@ -544,7 +544,40 @@ namespace zs {
         details().unsetTimeCodeDirty();
       }
 
-      details().refProcessingFlag() = 0;  // done processing
+      markStatusIdle();
+    });
+    /// @brief eventually triggers the above resources' batch-processing
+    zs_resources().dec_inflight_prim_cnt();
+
+    co_await ZS_EVENT_SCHEDULER().schedule();
+    co_return;
+  }
+
+  /// @brief zsmesh is already updated
+  zs::Future<void> ZsPrimitive::vkTriMeshAttribAsync(VulkanContext &ctx) {
+    zs_resources().inc_inflight_prim_cnt();
+
+    auto &triMesh = details().triMesh();
+    VkModel &ret = details().vkTriMesh();
+
+    // for batch processing later
+    zs_execution().refVkCmdTaskQueue().enqueue([&ret, &ctx, &triMesh, this](vk::CommandBuffer cmd) {
+      assert(details().isDirty(PrimitiveDetail::mask_AttribNoneShape));
+      {
+        ret.updateAttribsFromMesh(
+            cmd, triMesh, details().isDirty(details().dirty_Pos),
+            details().isDirty(details().dirty_Color), details().isDirty(details().dirty_UV),
+            details().isDirty(details().dirty_Normal), details().isDirty(details().dirty_Tangent));
+        if (details().isDirty(details().dirty_TextureId)) {
+          ret.updatePointTextureId(cmd, reinterpret_cast<const int *>(triMesh.texids.data()),
+                                   triMesh.texids.size() * 2 * sizeof(int));
+        }
+
+        /// processed at the end of each iteration
+        details().clearAttribDirtyFlag();
+      }
+
+      markStatusIdle();
     });
     /// @brief eventually triggers the above resources' batch-processing
     zs_resources().dec_inflight_prim_cnt();
@@ -582,33 +615,17 @@ namespace zs {
     return nullptr;
   }
   VkModel *ZsPrimitive::queryVkTriMesh(VulkanContext &ctx, TimeCode tc) {
-#if 0
-    if (_vkTriMeshAsync.isDone()) {
-      try {
-        if (details().meshRequireUpdate(tc)) {
-          _vkTriMeshAsync = vkTriMeshAsync(ctx, tc);
-          _vkTriMeshAsync.resume();
-          return nullptr;
-        } else
-          return &details().vkTriMesh();
-      } catch (const std::exception &e) {
-        fmt::print("query vk tri mesh failed. [{}]\n", e.what());
-        return nullptr;
-      }
-    } else if (!_vkTriMeshAsync.getHandle()) {  // isReady()
-      _vkTriMeshAsync = vkTriMeshAsync(ctx, tc);
-      _vkTriMeshAsync.resume();
-    }
-    return nullptr;
-#else
-    // if (_vkTriMeshAsync.isReady()) {
-    if (details().refProcessingFlag() == 0) {
+    if (isStatusIdle()) {
       try {
         bool tcNeedUpd = details().meshRequireUpdate(tc);
         if (!_vkTriMeshAsync.getHandle() || tcNeedUpd) {
-          details().refProcessingFlag() = 1;
+          markStatusProcessing();
           if (tcNeedUpd) details().setTimeCodeDirty();
           _vkTriMeshAsync = vkTriMeshAsync(ctx, tc);
+          _vkTriMeshAsync.resume();
+        } else if (details().isDirty(PrimitiveDetail::mask_AttribNoneShape)) {
+          markStatusProcessing();
+          _vkTriMeshAsync = vkTriMeshAttribAsync(ctx);
           _vkTriMeshAsync.resume();
         }
       } catch (const std::exception &e) {
@@ -617,7 +634,6 @@ namespace zs {
       }
     }
     return &details().vkTriMesh();
-#endif
   }
 
 }  // namespace zs

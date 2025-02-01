@@ -2,13 +2,13 @@
 #include <deque>
 #include <set>
 
-#include "world/core/Concepts.hpp"
 #include "../SceneInterface.hpp"
-#include "world/core/Serialization.hpp"
-#include "world/core/Signal.hpp"
 #include "../WorldExport.hpp"
 #include "../async/Coro.hpp"
 #include "Timeline.hpp"
+#include "world/core/Concepts.hpp"
+#include "world/core/Serialization.hpp"
+#include "world/core/Signal.hpp"
 #include "zensim/container/Bvh.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
@@ -335,6 +335,9 @@ namespace zs {
     }
 
     inline bool isTimeDependent() const noexcept;
+    /// @brief check if a certain attribute is time invariant
+    /// @note label: KEYFRAME_ATTRIB_[POS]_LABEL, [COLOR, UV, NORMAL, TANGENT, FACE_INDEX, FACE]
+    inline bool isAttribTimeInvariant(const char* label) const;
     inline bool queryStartEndTimeCodes(TimeCode& start, TimeCode& end) const noexcept;
     bool hasAttrib(const std::string& label) const { return _attribs.contains(label); }
 
@@ -507,7 +510,7 @@ namespace zs {
   enum class LightSourceType {
     DISTANT = 0,
     POINT,
-    SPHERE, // not supported yet
+    SPHERE,  // not supported yet
     RECT,
     DOME,
     CYLINDER,
@@ -515,9 +518,7 @@ namespace zs {
     NONE
   };
   struct ZS_WORLD_EXPORT LightPrimContainer : PrimContainerInterface<LightPrimContainer> {
-    bool isLight() const override {
-      return true;
-    }
+    bool isLight() const override { return true; }
 
     auto& lightType() noexcept { return _lightSourceType; }
     const auto& lightType() const noexcept { return _lightSourceType; }
@@ -540,17 +541,19 @@ namespace zs {
     const auto& enableColorTemperature() const noexcept { return _enableColorTemperature; }
 
     auto& exposure() noexcept { return _exposure; }
-    const auto& exposure() const noexcept { return _exposure; }
+    const auto& exposure() const noexcept {
+      return _exposure;
+    }
 
-    ; // TODO: light texture
-    ; // TODO: light geometry / area lighting
+    ;  // TODO: light texture
+    ;  // TODO: light geometry / area lighting
 
-    glm::vec3 _lightColor; // temperature is not considered
+    glm::vec3 _lightColor;  // temperature is not considered
     /*
-    * pamater for all kinds of light source
-    * POINT and SPHERE: world space position of center
-    * DISTANT: only x channel saves the angle of light
-    */
+     * pamater for all kinds of light source
+     * POINT and SPHERE: world space position of center
+     * DISTANT: only x channel saves the angle of light
+     */
     glm::vec4 _lightVector;
     float _intensity;
     float _colorTemperature;
@@ -717,6 +720,7 @@ namespace zs {
       mask_Topo = (dirty_Topo << 1) - 1,
 
       dirty_Pos = 1 << 1,  // the above should cause an update to GAS
+      //
       mask_Shape = (dirty_Topo << 1) - 1,
 
       dirty_UV = 1 << 2,
@@ -724,12 +728,14 @@ namespace zs {
       dirty_Tangent = 1 << 4,
       dirty_Color = 1 << 5,  // the above should cause an update to VkModel
       dirty_TextureId = 1 << 6,
+      //
       mask_Attrib = (dirty_TextureId << 1) - 1,
 
       dirty_Translation = 1 << 10,
       dirty_Rotation = 1 << 11,
       dirty_Scale = 1 << 12,
       dirty_Transform = 1 << 13,  // this affects transform cache
+      //
       mask_Transform = ((dirty_Transform << 1) - 1) ^ mask_Attrib,
 
       dirty_TimeCode = 1 << 16,
@@ -784,6 +790,11 @@ namespace zs {
 
     PrimKeyFrames& keyframes() noexcept { return _keyframes; }
     const PrimKeyFrames& keyframes() const noexcept { return _keyframes; }
+
+    bool isAttribTimeInvariant(const char* label) const {
+      return _keyframes.isAttribTimeInvariant(label);
+    }
+
     /// @note synchrounous resource
     Shared<ZsPrimitive>& visualMesh() noexcept { return _visualMesh; }
     const Shared<ZsPrimitive>& visualMesh() const noexcept { return _visualMesh; }
@@ -1191,6 +1202,21 @@ namespace zs {
     if (!isTimeVarying && _visibility.isTimeDependent()) isTimeVarying = true;
     if (!isTimeVarying && _transform.isTimeDependent()) isTimeVarying = true;
     return isTimeVarying;
+  }
+
+  bool PrimKeyFrames::isAttribTimeInvariant(const char* label) const {
+    if (strcmp(label, KEYFRAME_ATTRIB_POS_LABEL) == 0)
+      if (hasSkelAnim()) return true;
+    // KEYFRAME_ATTRIB_POS_LABEL
+    // KEYFRAME_ATTRIB_COLOR_LABEL
+    // KEYFRAME_ATTRIB_UV_LABEL
+    // KEYFRAME_ATTRIB_NORMAL_LABEL
+    // KEYFRAME_ATTRIB_TANGENT_LABEL
+    // KEYFRAME_ATTRIB_FACE_INDEX_LABEL
+    // KEYFRAME_ATTRIB_FACE_LABEL
+    if (auto it = _attribs.find(label); it != _attribs.end())
+      return !(*it).second.isTimeDependent();
+    return false;
   }
 
   bool PrimKeyFrames::queryStartEndTimeCodes(TimeCode& start, TimeCode& end) const noexcept {

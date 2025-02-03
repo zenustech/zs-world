@@ -116,7 +116,9 @@ namespace zs {
 
     pxr::GfMatrix4d bindTransform = skinQuery.GetGeomBindTransform(time).GetInverse();
     for (auto& point : points) {
-      point = bindTransform.Transform(point);
+      // point = bindTransform.Transform(point);
+      auto tmp = bindTransform.Transform(point);
+      point = pxr::GfVec3f{(float)tmp[0], (float)tmp[1], (float)tmp[2]};
     }
 
     // TODO: normals

@@ -7,11 +7,19 @@
 #include "boost/filesystem/directory.hpp"
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
+#include "interface/details/PyHelper.hpp"
 #include "zensim/ZpcImplPattern.hpp"
 #include "zensim/io/Filesystem.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 
 namespace zs {
+
+  NodeManager::~NodeManager() {
+    {
+      GILGuard guard;
+      _nodeUiDescs.clear();
+    }
+  }
 
   template <typename T>
   auto dll_import_symbol(const boost::dll::shared_library &lib, const char *name) {

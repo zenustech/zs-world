@@ -21,12 +21,7 @@ namespace zs {
 
     bool loadPluginsAt(const char *path) override;
 
-    ~NodeManager() {
-      {
-        GILGuard guard;
-        _nodeUiDescs.clear();
-      }
-    }
+    ~NodeManager();
 
   private:
     struct NodeDeleter {

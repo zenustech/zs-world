@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <chrono>
 #include "world/WorldExport.hpp"
 #include "ZsExecSystem.hpp"
 #include "zensim/execution/Concurrency.h"

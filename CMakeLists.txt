@@ -54,7 +54,8 @@ add_definitions(-DBOOST_SYSTEM_USE_UTF8)
 if (WIN32)
 	add_definitions(-D_WIN32_WINNT=0x0601 -DWIN32_LEAN_AND_MEAN)
 endif(WIN32)
-find_package(Boost REQUIRED COMPONENTS system filesystem)
+find_package(Boost CONFIG REQUIRED COMPONENTS system filesystem)
+find_package(glm CONFIG REQUIRED)
 
 ###########
 ## world ##
@@ -77,6 +78,7 @@ set_target_properties(zs_world_boost
 )
 
 # slang for render
+#[=[
 option(ZS_SLANG_BUILD_FROM_SOURCE "OFF will use prebuilt binary from github. ON will add slang as subdirectory" ON)
 
 set(SLANG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/slang)
@@ -132,6 +134,7 @@ else ()
 endif ()
 
 add_subdirectory(zs/world/render)
+#]=]
 
 # zs_world
 add_library(zs_world SHARED)
@@ -200,7 +203,7 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
 else()
   target_compile_features(zs_world PUBLIC cxx_std_20)
 endif()
-target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim zpc::shader_runtime 
+target_link_libraries(zs_world PUBLIC zs_interface zs_world_boost zensim glm::glm # zpc::shader_runtime 
 	tinygltf utf8cpp)
 target_link_libraries(zs_world PRIVATE zpc_jit_py)
 if (WIN32)

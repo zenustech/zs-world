@@ -5,6 +5,7 @@
 #include "interface/world/value_type/ValueInterface.hpp"
 #include "zensim/io/Filesystem.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
+#include "interface/details/PyHelper.hpp"
 
 extern "C" {
 

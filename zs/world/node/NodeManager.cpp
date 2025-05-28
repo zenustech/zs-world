@@ -1,5 +1,6 @@
 #include "NodeManager.hpp"
 
+#include "boost/function.hpp"
 #include "boost/dll.hpp"
 #include "boost/dll/alias.hpp"
 #include "boost/dll/import.hpp"
@@ -23,27 +24,21 @@ namespace zs {
 
   template <typename T>
   auto dll_import_symbol(const boost::dll::shared_library &lib, const char *name) {
-    typedef typename boost::dll::detail::import_type<T>::base_type type;
-
     boost::shared_ptr<boost::dll::shared_library> p
         = boost::make_shared<boost::dll::shared_library>(lib);
-    return type(p, boost::addressof(p->get<T>(name)));
+    return boost::function<T>(p->get<T>(name));
   }
   template <typename T> auto dll_import_symbol(boost::dll::shared_library &&lib, const char *name) {
-    typedef typename boost::dll::detail::import_type<T>::base_type type;
-
     boost::shared_ptr<boost::dll::shared_library> p
         = boost::make_shared<boost::dll::shared_library>(boost::move(lib));
-    return type(p, boost::addressof(p->get<T>(name)));
+    return boost::function<T>(p->get<T>(name));
   }
   template <class T>
   auto dll_import_symbol(const boost::dll::fs::path &lib, const char *name,
                          boost::dll::load_mode::type mode = boost::dll::load_mode::default_mode) {
-    typedef typename boost::dll::detail::import_type<T>::base_type type;
-
     boost::shared_ptr<boost::dll::shared_library> p
         = boost::make_shared<boost::dll::shared_library>(lib, mode);
-    return type(p, boost::addressof(p->get<T>(name)));
+    return boost::function<T>(p->get<T>(name));
   }
 
   /// load plugins

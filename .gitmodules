@@ -4,9 +4,6 @@
 [submodule "deps/utf8"]
 	path = deps/utf8
 	url = https://github.com/nemtrif/utfcpp.git
-[submodule "deps/slang"]
-	path = deps/slang
-	url = https://github.com/zenustech/slang.git
 [submodule "deps/zpc_jit"]
 	path = deps/zpc_jit
 	url = https://github.com/zenustech/POC_zpc_jit.git
